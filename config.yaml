@@ -1,0 +1,32 @@
+BOARD_SIZE: 10
+SHIPLEN_LIST:
+  - 5
+  - 4
+  - 3
+  - 3
+  - 2
+OUT_OF_BOUNDS: -1
+INVALID_STRING: -2
+X_AXIS: 'ABCDEFGHIJ'
+NORTH:
+  - 0
+  - -1
+SOUTH:
+  - 0
+  - 1
+EAST:
+  - -1
+  - 0
+WEST:
+  - 1
+  - 0
+SAME:
+  - 0
+  - 0
+SHIP_NAME: 
+  - 'No Boat'
+  - 'Dinghy'
+  - 'PT Boat'
+  - 'Destroyer'
+  - 'Battleship'
+  - 'Aircraft Carrier'

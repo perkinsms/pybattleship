@@ -7,18 +7,21 @@ from ship import Ship
 with open('config.yaml') as f:
     CFG = safe_load(f)
 
-HIDE = ''.maketrans('O', '.')
+HIDE = ''.maketrans('O', '~')
 
 class Board():
     def __init__(self, board_size=CFG['BOARD_SIZE']):
-        self.board = [['.' * board_size] for i in range(board_size)]
+        self.board = [['~' * board_size] for i in range(board_size)]
         return None
 
     def __repr__(self) -> str:
-        return f'  {CFG["X_AXIS"]}\n' + '\n'.join(['{:>2s}'.format(str(i)) + ''.join(row) for i, row in enumerate(self.board)])
+        return f' {CFG["X_AXIS"]}\n' + '\n'.join(['{:>2s}'.format(str(i)) + ''.join(row) for i, row in enumerate(self.board)])
+
+    def curses(self) -> str:
+        return '\n '.join([''.join(row) for row in self.board])
 
     def display_hidden(self) -> str:
-        return f'  {CFG["X_AXIS"]}\n' + '\n'.join(['{:>2s}'.format(str(i)) + ''.join(row).translate(HIDE) for i,row in enumerate(self.board)])
+        return f' {CFG["X_AXIS"]}\n' + '\n'.join(['{:>2s}'.format(str(i)) + ''.join(row).translate(HIDE) for i,row in enumerate(self.board)])
 
     def get_grid(self) -> str:
         return '\n'.join([''.join(row) for row in self.board])

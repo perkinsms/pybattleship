@@ -32,18 +32,22 @@ class Player():
         return f'Player {self.name} has {len(self.opp.board.ship_list) - self.opp.sunk_ships} remaining'
 
     
-    def configure_board(self):
+    def configure_board(self, random=False):
 
         if self.player_type == 'CPU':
             self.board = Board().random_board()
         else:
             while True:
-                b = Board().random_board()
-                print(b)
+                self.board = Board().random_board()
+                if random:
+                    break
+                print(self.board)
                 a = input("how does this board look? (y for yes, a for try again, q to quit): ")
-
                 if a == 'q':
                     exit()
+
+                if a == 'a':
+                    continue
 
                 if a == 'y':
                     self.board = b

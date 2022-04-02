@@ -1,23 +1,21 @@
 #!/usr/bin/python
 
-class Ship():
-    def __init__(self, board, pos, length, dir):
+class Ship:
+    def __init__(self, board, pos, length, nsew):
         self.board = board
         self.pos = pos
         self.length = length
-        self.dir = dir
+        self.nsew = nsew
         self.coords = {}
         self.left = length
 
     def __repr__(self):
-        return f' Ship at {self.pos} pointing to {self.dir}'
+        return f' Ship at {self.pos} pointing to {self.nsew}'
 
     def set_coord(self, pos):
         self.coords[pos] = 'O'
 
     def get_coords(self):
-        #print('getting coords')
-        #print(self.coords)
         return self.coords
 
     def record_hit(self, pos):

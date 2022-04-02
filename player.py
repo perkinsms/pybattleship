@@ -3,25 +3,29 @@
 from yaml import safe_load
 from random import choice
 from sys import exit
+from board import HIDE
+import curses as nc
+from utils import (poprandom, find_orthogonals)
+from board import Board
 
 with open('config.yaml') as f:
     CFG = safe_load(f)
-
-from utils import (parse_input, poprandom, sum_points, out_of_bounds, find_orthogonals, find_all_9_dirs)
-from board import Board
-from ship import Ship
 
 weighted_list = []
 for i in range(int(CFG['BOARD_SIZE']/3)):
     weighted_list += list(range(i, CFG['BOARD_SIZE'] - i))
 
-class Player():
+
+class Player:
     def __init__(self, name):
         self.name = name
         self.board = None
-        self.sunk_ships = 0
+        self.sunk_ships = []
         self.shots = 0
+        self.curs_x = 5
+        self.curs_y = 5
         self.next_shots = []
+        self.stdscr = nc.initscr()
         if self.name == 'CPU':
             self.player_type = 'CPU'
         else:
@@ -29,11 +33,10 @@ class Player():
 
 
     def __repr__(self):
-        return f'Player {self.name} has {len(self.opp.board.ship_list) - self.opp.sunk_ships} remaining'
+        return f'Player {self.name} has {len(self.opp.board.ship_list) - len(self.opp.sunk_ships)} remaining'
 
-    
+
     def configure_board(self, random=False):
-
         if self.player_type == 'CPU':
             self.board = Board().random_board()
         else:
@@ -41,104 +44,128 @@ class Player():
                 self.board = Board().random_board()
                 if random:
                     break
-                print(self.board)
-                a = input("how does this board look? (y for yes, a for try again, q to quit): ")
-                if a == 'q':
+                self.display_mine()
+                self.stdscr.addstr(20, 5, 'How does this board look? (y for yes, a for try again, q to quit): ')
+                key = self.stdscr.getkey()
+                if key == 'q':
                     exit()
-
-                if a == 'a':
+                elif key == 'a':
                     continue
-
-                if a == 'y':
-                    self.board = b
+                elif key == 'y':
                     break
 
+
+    def display_mine(self):
+        self.stdscr.keypad(True)
+        my_win = self.stdscr.subwin(12, 12, 5, 5)
+        self.stdscr.addstr(4,5, 'YOUR BOARD')
+        my_win.addstr(1, 1, str(self.board.curses()))
+        my_win.border()
+        self.stdscr.refresh()
+
+
+    def display(self):
+        self.stdscr.keypad(True)
+
+        my_win = self.stdscr.subwin(12, 12, 5, 5)
+        your_win = self.stdscr.subwin(12, 12, 5, 24)
+
+        self.stdscr.clear()
+        self.stdscr.addstr(4, 5, 'OPP BOARD')
+        self.stdscr.addstr(4, 24, 'YOUR BOARD')
+        my_win.addstr(1, 1, str(self.opp.board.curses().translate(HIDE)))
+        your_win.addstr(1, 1, str(self.board.curses()))
+
+        my_win.border()
+        your_win.border()
+        self.stdscr.move(self.curs_y + 6, self.curs_x + 6)
+        self.stdscr.refresh()
+
+
+    def get_target(self):
+        while True:
+            key = self.stdscr.getkey()
+            if key == "KEY_UP":
+                self.curs_y -= 1 if self.curs_y > 0 else 0
+            elif key == "KEY_DOWN":
+                self.curs_y += 1 if self.curs_y < 9 else 0
+            elif key == "KEY_LEFT":
+                self.curs_x -= 1 if self.curs_x > 0 else 0
+            elif key == "KEY_RIGHT":
+                self.curs_x += 1 if self.curs_x < 9 else 0
+            elif key in 'qQ':
+                self.quit_window()
+            elif key in '\n':
+                if self.opp.board.get_square((self.curs_x, self.curs_y)) in 'X*':
+                    continue
+                else:
+                    return self.curs_x, self.curs_y
+
+
+    def quit_window(self):
+        quitwin = self.stdscr.subwin(3, 27, 10, 10)
+        quitwin.border()
+        quitwin.addstr(1, 1, 'Quit? are you sure? (y, N)')
+        key = quitwin.getkey()
+        quitwin.refresh()
+        if key in 'yY':
+            exit()
+
+
     def shoot_at(self, pos):
-        for ship in self.opp.board.ship_list:
-            if ship.shoot_ship(pos):
-                self.opp.board.set_square(pos, 'X')
-                if ship.is_sunk():
-                    self.sink(ship)
-                return True
-            else:
-                self.opp.board.set_square(pos, '*')
-        return False
+        if self.opp.board.get_square(pos) not in 'O':
+            self.opp.board.set_square(pos, '*')
+            return False
+        else:
+            for ship in self.opp.board.ship_list:
+                if ship.shoot_ship(pos):
+                    self.opp.board.set_square(pos, 'X')
+                    if ship.is_sunk():
+                        self.sink(ship)
+                    return True
+
 
     def sink(self, ship):
-        print(f'{self.name} sunk a {CFG["SHIP_NAME"][ship.length]}')
-        self.sunk_ships +=1
-        #self.next_shots = []
-        if len(self.board.ship_list) == self.sunk_ships:
+        print(f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}')
+        self.sunk_ships.append(ship)
+        if len(self.board.ship_list) == len(self.sunk_ships):
             self.win()
+
+
+    def take_turn(self):
+        if self.player_type == 'CPU':
+            return self.computer_turn()
+        self.display()
+        pos = self.get_target()
+        self.shoot_at(pos)
+        self.display()
+
 
     def win(self):
         print(f'{self.name} wins!')
         print(f'{self.name} shot {self.shots} times')
         exit()
 
-    def take_turn(self):
-        if self.player_type == 'CPU':
-            return self.computer_turn()
-
-        print('opponent board')
-        print(self.opp.board.display_hidden())
-
-        while True:
-
-            pos = self.get_target()
-
-            if not pos:
-                continue
-
-            self.shots += 1
-            if self.shoot_at(pos):
-                print("Hit")
-                break
-            else:
-                print("Miss")
-                break
-
-    def get_target(self):
-        inp = input(f'enter target coordiates: (e.g., A7, QQ to quit) ') 
-        if str(inp).upper() == 'QQ':
-            exit()
-
-        pos = parse_input(inp)
-        if pos[0] in [CFG['INVALID_STRING'], CFG['OUT_OF_BOUNDS']]:
-            print('Invalid Entry')
-            return False
-
-        if self.opp.board.get_square(pos) in ['X', '*']:
-            print('already shot there!')
-            return False
-
-        else:
-            return pos
 
     def computer_turn(self):
         while True:
             if not self.next_shots:
                 self.next_shots = []
                 pos = (choice(weighted_list), choice(weighted_list))
-                if (pos[0] + pos[1]) % 3 != 0:
+                if self.shots >= 35:
+                    spacing = 2
+                else:
+                    spacing = 3
+                if (pos[0] + pos[1]) % spacing != 0:
                     continue
-                #print(f'DEBUG: shooting randomly, target = {pos}')
             else:
-                #print(f'DEBUG: next shots: {self..next_shots}')
                 (pos, self.next_shots) = poprandom(self.next_shots)
-                #print(f'DEBUG: shooting at target = {pos}')
             if self.opp.board.get_square(pos) in ['X', '*']:
                 continue
-            self.shots +=1
+            self.shots += 1
             if self.shoot_at(pos):
                 self.next_shots += find_orthogonals(pos)
-                #print(f'DEBUG: appending next shots: {find_orthogonals(pos)}')
-                print('computer hits!')
                 break
             else:
-                print('computer misses!')
                 break
-
-        print('your board')
-        print(self.opp.board)
         return None

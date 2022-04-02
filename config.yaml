@@ -1,5 +1,5 @@
 BOARD_SIZE: 10
-SHIPLEN_LIST:
+SHIP_LIST:
   - 5
   - 4
   - 3

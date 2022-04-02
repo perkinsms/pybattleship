@@ -4,7 +4,6 @@ from yaml import safe_load
 from random import choice
 from sys import exit
 from board import HIDE
-import curses as nc
 from utils import (poprandom, find_orthogonals)
 from board import Board
 
@@ -17,7 +16,7 @@ for i in range(int(CFG['BOARD_SIZE']/3)):
 
 
 class Player:
-    def __init__(self, name):
+    def __init__(self, name, stdscr):
         self.name = name
         self.board = None
         self.sunk_ships = []
@@ -25,7 +24,8 @@ class Player:
         self.curs_x = 5
         self.curs_y = 5
         self.next_shots = []
-        self.stdscr = nc.initscr()
+        self.stdscr = stdscr
+        self.stdscr.keypad(True)
         if self.name == 'CPU':
             self.player_type = 'CPU'
         else:
@@ -56,7 +56,6 @@ class Player:
 
 
     def display_mine(self):
-        self.stdscr.keypad(True)
         my_win = self.stdscr.subwin(12, 12, 5, 5)
         self.stdscr.addstr(4,5, 'YOUR BOARD')
         my_win.addstr(1, 1, str(self.board.curses()))
@@ -65,41 +64,38 @@ class Player:
 
 
     def display(self):
-        self.stdscr.keypad(True)
-
         my_win = self.stdscr.subwin(12, 12, 5, 5)
         your_win = self.stdscr.subwin(12, 12, 5, 24)
-
         self.stdscr.clear()
         self.stdscr.addstr(4, 5, 'OPP BOARD')
         self.stdscr.addstr(4, 24, 'YOUR BOARD')
         my_win.addstr(1, 1, str(self.opp.board.curses().translate(HIDE)))
         your_win.addstr(1, 1, str(self.board.curses()))
-
         my_win.border()
         your_win.border()
-        self.stdscr.move(self.curs_y + 6, self.curs_x + 6)
         self.stdscr.refresh()
 
 
     def get_target(self):
         while True:
+            self.stdscr.move(self.curs_y, self.curs_x)
+            self.stdscr.refresh()
             key = self.stdscr.getkey()
             if key == "KEY_UP":
-                self.curs_y -= 1 if self.curs_y > 0 else 0
+                self.curs_y -= 1 if self.curs_y > 6 else 0
             elif key == "KEY_DOWN":
-                self.curs_y += 1 if self.curs_y < 9 else 0
+                self.curs_y += 1 if self.curs_y < 15 else 0
             elif key == "KEY_LEFT":
-                self.curs_x -= 1 if self.curs_x > 0 else 0
+                self.curs_x -= 1 if self.curs_x > 6 else 0
             elif key == "KEY_RIGHT":
-                self.curs_x += 1 if self.curs_x < 9 else 0
+                self.curs_x += 1 if self.curs_x < 15 else 0
             elif key in 'qQ':
                 self.quit_window()
             elif key in '\n':
-                if self.opp.board.get_square((self.curs_x, self.curs_y)) in 'X*':
+                if self.opp.board.get_square((self.curs_x - 6, self.curs_y - 6)) in 'X*':
                     continue
                 else:
-                    return self.curs_x, self.curs_y
+                    return self.curs_x - 6, self.curs_y - 6
 
 
     def quit_window(self):
@@ -126,7 +122,9 @@ class Player:
 
 
     def sink(self, ship):
-        print(f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}')
+        self.stdscr.addstr(5,5, f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}')
+        self.stdscr.refresh()
+        key = self.stdscr.getkey()
         self.sunk_ships.append(ship)
         if len(self.board.ship_list) == len(self.sunk_ships):
             self.win()
@@ -138,12 +136,14 @@ class Player:
         self.display()
         pos = self.get_target()
         self.shoot_at(pos)
+        self.shots += 1
         self.display()
 
 
     def win(self):
-        print(f'{self.name} wins!')
-        print(f'{self.name} shot {self.shots} times')
+        self.stdscr.addstr(5,5, f'{self.name} wins!')
+        self.stdscr.addstr(6,5, f'{self.name} shot {self.shots} times')
+        self.stdscr.getkey()
         exit()
 
 

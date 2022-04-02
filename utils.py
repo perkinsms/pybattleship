@@ -13,28 +13,21 @@ SAME = (int(CFG['SAME'][0]), int(CFG['SAME'][1]))
 
 
 def parse_input(inp):
-    print(f'DEBUG: got input string {inp} len: {len(inp)}')
-
     if len(inp) < 2:
         return CFG['INVALID_STRING'], CFG['INVALID_STRING']
-    
     try: 
         if str(inp[0]).upper() not in CFG['X_AXIS']:
             return CFG['INVALID_STRING'], CFG['INVALID_STRING']
         x = CFG['X_AXIS'].index(inp[0].upper())
-        print(f'DEBUG: found x coordinate: {x}')
-
         if int(inp[1]) not in range(CFG['BOARD_SIZE']):
             return CFG['OUT_OF_BOUNDS'], CFG['OUT_OF_BOUNDS']
         y = int(inp[1])
-        print(f'DEBUG: found y coordinate: {y}')
         if x < 0 or x >= CFG['BOARD_SIZE']:
             return CFG['OUT_OF_BOUNDS'], CFG['OUT_OF_BOUNDS']
         if y < 0 or y >= CFG['BOARD_SIZE']:
             return CFG['OUT_OF_BOUNDS'], CFG['OUT_OF_BOUNDS']
         return x, y
     except ValueError:
-        print(f'DEBUG: not a valid entry string: {inp}')
         return CFG['INVALID_STRING'], CFG['INVALID_STRING']
 
 

@@ -1,14 +1,20 @@
 #!/usr/bin/python
-
 from yaml import safe_load
 from random import choice
 from sys import exit
 from board import HIDE
 from utils import (poprandom, find_orthogonals)
 from board import Board
+import display
+
+import logging
+logging.basicConfig(filename='log.txt')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 with open('config.yaml') as f:
     CFG = safe_load(f)
+
 
 weighted_list = []
 for i in range(int(CFG['BOARD_SIZE']/3)):
@@ -18,14 +24,15 @@ for i in range(int(CFG['BOARD_SIZE']/3)):
 class Player:
     def __init__(self, name, stdscr):
         self.name = name
+        self.stdscr = stdscr
+        self.display = display.Display(stdscr)
         self.board = None
         self.sunk_ships = []
         self.shots = 0
-        self.curs_x = 5
-        self.curs_y = 5
+        self.curs_x = 6
+        self.curs_y = 6
         self.next_shots = []
-        self.stdscr = stdscr
-        self.stdscr.keypad(True)
+        stdscr.keypad(True)
         if self.name == 'CPU':
             self.player_type = 'CPU'
         else:
@@ -44,9 +51,9 @@ class Player:
                 self.board = Board().random_board()
                 if random:
                     break
-                self.display_mine()
-                self.stdscr.addstr(20, 5, 'How does this board look? (y for yes, a for try again, q to quit): ')
-                key = self.stdscr.getkey()
+
+                self.display.display_board(self.board, (1, 1))
+                key = self.display.dialog('OK? Y for yes, a for try again, q to quit: ', (15, 5))
                 if key == 'q':
                     exit()
                 elif key == 'a':
@@ -63,18 +70,13 @@ class Player:
         self.stdscr.refresh()
 
 
-    def display(self):
-        my_win = self.stdscr.subwin(12, 12, 5, 5)
-        your_win = self.stdscr.subwin(12, 12, 5, 24)
+    def display_all(self):
         self.stdscr.clear()
-        self.stdscr.addstr(4, 5, 'OPP BOARD')
-        self.stdscr.addstr(4, 24, 'YOUR BOARD')
-        my_win.addstr(1, 1, str(self.opp.board.curses().translate(HIDE)))
-        your_win.addstr(1, 1, str(self.board.curses()))
-        my_win.border()
-        your_win.border()
+        self.display.display_board(self.board, (25, 5))
+        self.display.display_board(self.opp.board, (5, 5), hidden=True)
+        self.display.message('OPP BOARD', (5, 3))
+        self.display.message('YOUR BOARD', (25, 3))
         self.stdscr.refresh()
-
 
     def get_target(self):
         while True:
@@ -99,12 +101,14 @@ class Player:
 
 
     def quit_window(self):
-        quitwin = self.stdscr.subwin(3, 27, 10, 10)
-        quitwin.border()
-        quitwin.addstr(1, 1, 'Quit? are you sure? (y, N)')
-        key = quitwin.getkey()
-        quitwin.refresh()
+        key = self.display.dialog('Quit? are you sure? (y, N)', (10, 10))
         if key in 'yY':
+            self.quit()
+            return None
+
+
+    def quit(self, string):
+        if string in 'yY':
             exit()
 
 
@@ -122,8 +126,7 @@ class Player:
 
 
     def sink(self, ship):
-        self.stdscr.addstr(5,5, f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}')
-        self.stdscr.refresh()
+        self.display.message(f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}', (10, 10))
         key = self.stdscr.getkey()
         self.sunk_ships.append(ship)
         if len(self.board.ship_list) == len(self.sunk_ships):
@@ -133,16 +136,17 @@ class Player:
     def take_turn(self):
         if self.player_type == 'CPU':
             return self.computer_turn()
-        self.display()
+        self.display_all()
         pos = self.get_target()
         self.shoot_at(pos)
         self.shots += 1
-        self.display()
+        self.display_all()
 
 
     def win(self):
-        self.stdscr.addstr(5,5, f'{self.name} wins!')
-        self.stdscr.addstr(6,5, f'{self.name} shot {self.shots} times')
+        self.display.message(f'{self.name} wins!!', (10, 8))
+        self.display.message(f'{self.name} shot {self.shots} times', (10, 10))
+
         self.stdscr.getkey()
         exit()
 

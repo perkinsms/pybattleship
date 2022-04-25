@@ -19,6 +19,7 @@ HIDE = ''.maketrans('O', '~')
 class Board:
     def __init__(self, board_size=CFG['BOARD_SIZE']):
         self.ship_list = []
+        self.sunk_ships = []
         self.board = [['~' * board_size] for _ in range(board_size)]
 
 
@@ -100,6 +101,12 @@ class Board:
             if self.check_ship_loc(ship):
                 self.set_ship_loc(ship)
                 return ship
+
+
+    def delete_ship(self, ship):
+        self.sunk_ships.append(ship)
+        self.ship_list.remove(ship)
+
 
 if __name__ == "__main__":
     b = Board()

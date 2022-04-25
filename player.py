@@ -3,7 +3,7 @@ from yaml import safe_load
 from random import choice
 from sys import exit
 from board import HIDE
-from utils import (poprandom, find_orthogonals)
+from utils import (poprandom, find_orthogonals, find_all_9_dirs)
 from board import Board
 import display
 
@@ -29,6 +29,7 @@ class Player:
         self.board = None
         self.sunk_ships = []
         self.shots = 0
+        self.nukes = 1
         self.curs_x = 6
         self.curs_y = 6
         self.next_shots = []
@@ -72,10 +73,14 @@ class Player:
 
     def display_all(self):
         self.stdscr.clear()
+        self.display.message('OPP  BOARD', (5, 3))
+        self.display.message('YOUR BOARD', (25, 3))
         self.display.display_board(self.board, (25, 5))
         self.display.display_board(self.opp.board, (5, 5), hidden=True)
-        self.display.message('OPP BOARD', (5, 3))
-        self.display.message('YOUR BOARD', (25, 3))
+        if self.nukes >= 1:
+            self.display.message(f'You have {self.nukes} nuke' + ('s' if self.nukes > 1 else '') + '. Hit N to nuke', (5, 17))
+        display_string = ' '.join([CFG['SHIP_NAME'][ship.length] for ship in self.opp.board.ship_list])
+        self.display.message(f'Remaining Ships: {display_string}', (5, 20))
         self.stdscr.refresh()
 
     def get_target(self):
@@ -93,6 +98,9 @@ class Player:
                 self.curs_x += 1 if self.curs_x < 15 else 0
             elif key in 'qQ':
                 self.quit_window()
+            elif key in "N":
+                if self.display.dialog(f"NUKE ({self.curs_x -6}, {self.curs_y -6})? You have {self.nukes} nukes remaining. Y to confirm", (5, 22)) == 'Y':
+                    self.nuke((self.curs_x - 6, self.curs_y - 6))
             elif key in '\n':
                 if self.opp.board.get_square((self.curs_x - 6, self.curs_y - 6)) in 'X*':
                     continue
@@ -113,10 +121,12 @@ class Player:
 
 
     def shoot_at(self, pos):
-        if self.opp.board.get_square(pos) not in 'O':
+        if self.opp.board.get_square(pos) in '~':
             self.opp.board.set_square(pos, '*')
             return False
-        else:
+        elif self.opp.board.get_square(pos) in 'X':
+            return False
+        elif self.opp.board.get_square(pos) in 'O':
             for ship in self.opp.board.ship_list:
                 if ship.shoot_ship(pos):
                     self.opp.board.set_square(pos, 'X')
@@ -124,12 +134,21 @@ class Player:
                         self.sink(ship)
                     return True
 
+    def nuke(self, pos):
+        if self.nukes > 0:
+            target_list = find_all_9_dirs(pos)
+            for target in target_list:
+                self.shoot_at(target)
+            self.nukes -= 1
+        self.display_all()
+
 
     def sink(self, ship):
         self.display.message(f'{self.name} sank a {CFG["SHIP_NAME"][ship.length]}', (10, 10))
         key = self.stdscr.getkey()
         self.sunk_ships.append(ship)
-        if len(self.board.ship_list) == len(self.sunk_ships):
+        self.opp.board.delete_ship(ship)
+        if len(self.sunk_ships) == len(CFG['SHIP_LIST']):
             self.win()
 
 

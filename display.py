@@ -23,15 +23,15 @@ class Display():
 
     def display_board(self, board, pos, hidden=False):
         logger.debug(f'{self.root}, {board}, {pos}, {hidden}')
-        height = len(board.board) + 3
-        width = len(board.board) + 3
+        height = len(board.board) + 2
+        width = len(board.board) + 2
         logger.debug(f'height = {height}, width = {width}')
         win = self.root.subwin(height, width, pos[1], pos[0])
-        win.border()
         if hidden:
             win.addstr(1, 1, board.curses().translate(HIDE))
         else:
             win.addstr(1, 1, board.curses())
+        win.border()
         win.refresh()
 
     def dialog(self, string, pos):
